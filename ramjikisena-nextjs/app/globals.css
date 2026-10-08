@@ -1,0 +1,372 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================
+   DESIGN TOKENS  (rang / colors yaha se badal sakte hain)
+   ===================================================== */
+:root {
+  --saffron: #ff6b35;
+  --saffron-dark: #cc3700;
+  --gold: #d4920a;
+  --gold-light: #f9e07a;
+  --maroon-900: #0f0500;
+  --cream: #fffaf3;
+  --ink: #1e293b;
+
+  --background: var(--cream);
+  --foreground: var(--ink);
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* =====================================================
+   BASE  (har device par sahi dikhne ke liye)
+   ===================================================== */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), var(--font-deva), system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Devanagari', 'Nirmala UI', sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;           /* mobile par side-scroll nahi aayega */
+  min-height: 100dvh;
+  text-rendering: optimizeLegibility;
+}
+
+img, video, svg { max-width: 100%; }
+img { height: auto; }
+
+/* Keyboard se navigate karne wale users ke liye clear focus ring */
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Text select karne par brand color */
+::selection { background: rgba(255, 107, 53, 0.25); }
+
+/* Mobile par input zoom (iPhone) rokne ke liye 16px font */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px !important; }
+}
+
+/* Touch devices par menu ke buttons/links ko bada tap area */
+@media (pointer: coarse) {
+  nav a, nav button, aside a, aside button { min-height: 44px; }
+}
+
+/* =====================================================
+   TRANSITIONS
+   Pehle `* { transition }` tha jo animations ko atka deta tha
+   (Framer Motion se takrata tha). Ab sirf interactive items par.
+   ===================================================== */
+a, button, input, select, textarea, summary {
+  transition-property: color, background-color, border-color, box-shadow, opacity, filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* =====================================================
+   SCROLLBAR (sirf desktop)
+   ===================================================== */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: linear-gradient(to bottom, #fff5f0, #ffe5d9); }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, #ff6b35, #ff4500); border-radius: 5px; }
+  ::-webkit-scrollbar-thumb:hover { background: linear-gradient(to bottom, #ff4500, #cc3700); }
+}
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* =====================================================
+   DIVINE EFFECTS (pehle jaise hi, naam same hain)
+   ===================================================== */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+@keyframes glow {
+  0%, 100% { text-shadow: 0 0 10px rgba(255, 107, 53, 0.5); }
+  50% { text-shadow: 0 0 20px rgba(255, 107, 53, 0.8), 0 0 30px rgba(255, 107, 53, 0.6); }
+}
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(255, 107, 53, 0.5); box-shadow: 0 0 10px rgba(255, 107, 53, 0.3); }
+  50% { border-color: rgba(255, 107, 53, 1); box-shadow: 0 0 20px rgba(255, 107, 53, 0.6); }
+}
+
+.ram-naam-bg { position: relative; overflow: hidden; }
+.ram-naam-bg::before {
+  content: 'राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम राम';
+  position: absolute; inset: 0;
+  font-size: 2rem; font-weight: bold;
+  color: rgba(255, 107, 53, 0.08);
+  line-height: 3rem;
+  word-wrap: break-word;
+  pointer-events: none; z-index: 0; padding: 1.25rem;
+  animation: float 6s ease-in-out infinite;
+}
+@media (min-width: 768px) {
+  .ram-naam-bg::before { font-size: 3rem; line-height: 4rem; padding: 2rem; }
+}
+
+.divine-glow { animation: glow 3s ease-in-out infinite; }
+.divine-border { animation: border-glow 2s ease-in-out infinite; }
+.om-symbol {
+  font-size: clamp(4rem, 12vw, 8rem);
+  color: rgba(255, 107, 53, 0.1);
+  position: absolute;
+  animation: float 8s ease-in-out infinite;
+}
+
+/* =====================================================
+   REUSABLE HELPERS (kisi bhi page me class lagakar use karein)
+   ===================================================== */
+.page-safe-top { padding-top: calc(var(--safe-top) + 0px); }
+.page-safe-bottom { padding-bottom: calc(var(--safe-bottom) + 0px); }
+
+/* Wide table ko mobile par apne andar scroll karwane ke liye */
+.table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Text ko lambe naam par todne ke liye */
+.break-anywhere { overflow-wrap: anywhere; }
+
+/* Chhoti screen par animation kam karne wale users ke liye */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Mobile browsers me address bar ki wajah se 100vh kat jata hai; dvh isko theek karta hai */
+.min-h-screen { min-height: 100vh; min-height: 100dvh; }
+
+/* =====================================================
+   CLAYMORPHISM (Login / Register pages ke liye)
+   ===================================================== */
+.clay-bg {
+  background: linear-gradient(160deg, #ffe8d3 0%, #ffd6bb 50%, #ffe4cc 100%);
+}
+
+.clay-blob {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  box-shadow:
+    inset 10px 10px 22px rgba(255, 255, 255, 0.7),
+    inset -10px -10px 22px rgba(230, 130, 70, 0.25),
+    14px 14px 30px rgba(204, 110, 50, 0.18);
+}
+
+.clay-card {
+  background: #fff3e6;
+  border-radius: 2.25rem;
+  box-shadow:
+    18px 18px 38px rgba(204, 120, 60, 0.30),
+    -14px -14px 30px rgba(255, 255, 255, 0.95),
+    inset 6px 6px 14px rgba(255, 255, 255, 0.85),
+    inset -6px -6px 14px rgba(230, 150, 90, 0.18);
+}
+
+.clay-icon {
+  background: linear-gradient(145deg, #ffc27d, #ff7a3d);
+  border-radius: 1.75rem;
+  box-shadow:
+    10px 10px 22px rgba(204, 90, 20, 0.35),
+    -8px -8px 18px rgba(255, 255, 255, 0.9),
+    inset 5px 5px 10px rgba(255, 255, 255, 0.5),
+    inset -5px -5px 10px rgba(180, 60, 0, 0.25);
+}
+
+.clay-chip {
+  background: #fff3e6;
+  border-radius: 9999px;
+  box-shadow:
+    4px 4px 8px rgba(204, 120, 60, 0.25),
+    -3px -3px 7px rgba(255, 255, 255, 0.95);
+}
+
+.clay-input {
+  background: #fff8f0;
+  border: 0;
+  border-radius: 1.25rem;
+  color: #4a2410;
+  box-shadow:
+    inset 6px 6px 12px rgba(204, 120, 60, 0.20),
+    inset -6px -6px 12px rgba(255, 255, 255, 0.95);
+}
+.clay-input::placeholder { color: #b8957b; font-weight: 500; }
+.clay-input:focus,
+.clay-input:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 6px 6px 12px rgba(204, 120, 60, 0.20),
+    inset -6px -6px 12px rgba(255, 255, 255, 0.95),
+    0 0 0 3px rgba(255, 140, 60, 0.45);
+}
+
+.clay-btn {
+  border: 0;
+  border-radius: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  box-shadow:
+    9px 9px 18px rgba(204, 90, 20, 0.35),
+    -6px -6px 14px rgba(255, 255, 255, 0.9),
+    inset 4px 4px 8px rgba(255, 255, 255, 0.45),
+    inset -4px -4px 8px rgba(0, 0, 0, 0.14);
+  transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+}
+.clay-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.04); }
+.clay-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    inset 6px 6px 12px rgba(0, 0, 0, 0.22),
+    inset -4px -4px 10px rgba(255, 255, 255, 0.25);
+}
+.clay-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.clay-btn-saffron { background: linear-gradient(145deg, #ffb870, #ff6b35); }
+.clay-btn-green   { background: linear-gradient(145deg, #5eead4, #16a34a); }
+
+.clay-alert {
+  background: #ffe9e6;
+  color: #b42318;
+  border-radius: 1.25rem;
+  box-shadow:
+    inset 4px 4px 9px rgba(220, 38, 38, 0.15),
+    inset -4px -4px 9px rgba(255, 255, 255, 0.9);
+}
+
+/* =====================================================
+   CLAY BIG TEXT: login/register ke sabhi sentences ka font bada
+   ===================================================== */
+.clay-bigtext h1 { font-size: clamp(1.9rem, 7vw, 2.75rem); line-height: 1.15; }
+.clay-bigtext h1 + p { font-size: 1.15rem; }
+.clay-bigtext h2 { font-size: 1.75rem; }
+.clay-bigtext label { font-size: 1.05rem; letter-spacing: 0.04em; }
+.clay-bigtext .clay-input {
+  font-size: 1.0625rem !important;
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+.clay-bigtext .clay-btn { font-size: 1.15rem !important; padding-top: 1.1rem; padding-bottom: 1.1rem; }
+.clay-bigtext .text-sm,
+.clay-bigtext a { font-size: 1.05rem; }
+.clay-bigtext .text-xs { font-size: 1rem; }
+.clay-bigtext .clay-chip { width: 2.5rem; height: 2.5rem; }
+.clay-bigtext .clay-chip svg { width: 1.15rem; height: 1.15rem; }
+.clay-bigtext .clay-input { padding-left: 3.75rem !important; }
+
+/* =====================================================
+   CLAY OM (ॐ): background me bada ubhra hua Om
+   ===================================================== */
+.clay-om-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+}
+.clay-om {
+  font-size: clamp(16rem, 70vw, 34rem);
+  font-weight: 900;
+  line-height: 1;
+  color: #ffc48a;
+  text-shadow:
+    10px 10px 22px rgba(204, 120, 60, 0.30),
+    -8px -8px 18px rgba(255, 255, 255, 0.90);
+}
+
+/* Section headings (Pandit Registration) */
+.clay-bigtext h3 { font-size: 1.3rem; }
+
+
+
+/* =====================================================
+   DASHBOARD THEME (sidebar + dashboard pages)
+   ===================================================== */
+.dash-card {
+  background: #ffffff;
+  border: 1px solid rgba(251, 146, 60, 0.18);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 30px -14px rgba(234, 88, 12, 0.28), 0 2px 6px -2px rgba(15, 23, 42, 0.05);
+}
+.dash-card-hover { transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease; }
+.dash-card-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(251, 146, 60, 0.5);
+  box-shadow: 0 18px 38px -14px rgba(234, 88, 12, 0.38), 0 2px 6px -2px rgba(15, 23, 42, 0.06);
+}
+.dash-input {
+  width: 100%;
+  background: #fff8f0;
+  border: 1.5px solid #fde3c8;
+  border-radius: 1rem;
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+.dash-input::placeholder { color: #b8957b; font-weight: 500; }
+.dash-input:focus { background: #fff; border-color: #fb923c; box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.18); }
+.dash-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  min-height: 44px; padding: 0.65rem 1.25rem;
+  border-radius: 1rem; font-weight: 800; font-size: 0.9rem; color: #fff;
+  background: linear-gradient(135deg, #fb923c, #ea580c);
+  box-shadow: 0 10px 22px -10px rgba(234, 88, 12, 0.7), inset 0 1px 0 rgba(255,255,255,0.35);
+  transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease;
+}
+.dash-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); }
+.dash-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.dash-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.dash-btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  min-height: 44px; padding: 0.65rem 1.25rem;
+  border-radius: 1rem; font-weight: 800; font-size: 0.9rem; color: #9a3412;
+  background: #fff3e6; border: 1px solid #fed7aa;
+  transition: background 150ms ease, transform 150ms ease;
+}
+.dash-btn-ghost:hover { background: #ffe8cf; }
+.dash-btn-ghost:active { transform: scale(0.98); }
+.dash-title { font-size: clamp(1.5rem, 4.5vw, 2rem); font-weight: 900; color: #3b1d0a; letter-spacing: -0.02em; line-height: 1.15; }
+.dash-sub { font-size: 0.95rem; font-weight: 600; color: #9a6b4b; margin-top: 0.25rem; }
+.dash-label { display: block; font-size: 0.7rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #9a6b4b; margin: 0 0 0.4rem 0.25rem; }
+.dash-section { font-size: 0.75rem; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; color: #b8957b; }
+.dash-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.dash-scroll::-webkit-scrollbar-thumb { background: rgba(251,146,60,0.35); border-radius: 9999px; }
+.dash-side-scroll::-webkit-scrollbar { width: 5px; }
+.dash-side-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 9999px; }
+
+/* Jo pages hum ne nahi badle (jaise blog detail), unhe bhi dashboard ke andar ek jaisa look dene ke liye */
+.dash-shell .border-orange-100.bg-white,
+.dash-shell .bg-white.border-2 { border-radius: 1.5rem; box-shadow: 0 10px 30px -14px rgba(234, 88, 12, 0.25); }
+.dash-shell input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.dash-shell textarea,
+.dash-shell select { border-radius: 1rem; }
+.dash-shell input:focus, .dash-shell textarea:focus, .dash-shell select:focus { box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.18); }
+
+/* Content ke upar/neeche ki jagah (mobile top bar + bottom tabs, safe-area ke sath) */
+.dash-main {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 5rem);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);
+}
+@media (min-width: 1024px) { .dash-main { padding-top: 2rem; padding-bottom: 2.5rem; } }

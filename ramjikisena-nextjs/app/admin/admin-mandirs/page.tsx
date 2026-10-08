@@ -1,0 +1,1120 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import api from '@/lib/api';
+import Link from 'next/link';
+import { Church, FileText, MapPin, Sparkles, Smartphone, Phone, Star, Pencil, Trash2, Plus, X, Eye, Calendar } from 'lucide-react';
+import ImageUploader from '@/components/ImageUploader';
+
+interface Mandir {
+  _id: string;
+  name: string;
+  description: string;
+  history?: string;
+  significance?: string;
+  templeType?: string;
+  architecture?: string;
+  builtYear?: string;
+  languages?: string[];
+  videos?: string[];
+  location: {
+    address?: string;
+    city: string;
+    state: string;
+    pincode?: string;
+    coordinates?: { lat: number; lng: number };
+  };
+  timing?: {
+    opening: string;
+    closing: string;
+    aarti?: Array<{ name: string; time: string } | string>;
+    specialTimings?: string;
+    specialDays?: Array<{ day: string; opening: string; closing: string; note: string }>;
+  };
+  contact?: { phone?: string; email?: string; website?: string };
+  photos?: string[];
+  deity?: { main?: string; others?: string[] };
+  visitInfo?: {
+    bestTimeToVisit?: string;
+    dressCode?: string;
+    entryFee?: string;
+    photographyAllowed?: boolean;
+    mobileAllowed?: boolean;
+    shoeStand?: boolean;
+    annualVisitors?: string;
+    donationInfo?: string;
+    trustName?: string;
+    managedBy?: string;
+  };
+  facilities?: {
+    parking?: boolean; prasad?: boolean; accommodation?: boolean;
+    wheelchairAccessible?: boolean; restrooms?: boolean; drinkingWater?: boolean;
+    cloakroom?: boolean; medicalAid?: boolean; foodStalls?: boolean;
+  };
+  socialMedia?: { facebook?: string; instagram?: string; youtube?: string; twitter?: string };
+  averageRating: number;
+  reviews: any[];
+  createdAt: string;
+}
+
+export default function AdminMandirs() {
+  const [mandirs, setMandirs] = useState<Mandir[]>([]);
+  const [pendingMandirs, setPendingMandirs] = useState<Mandir[]>([]);
+  const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('pending');
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    history: '',
+    'location.address': '',
+    'location.city': '',
+    'location.state': '',
+    'location.coordinates.lat': '',
+    'location.coordinates.lng': '',
+    'timing.opening': '',
+    'timing.closing': '',
+    'timing.aarti': '',
+    'contact.phone': '',
+    'contact.email': '',
+    'contact.website': '',
+    photos: [] as string[],
+    // NEW FIELDS
+    'deity.main': '',
+    'deity.others': '',
+    'visitInfo.bestTimeToVisit': '',
+    'visitInfo.dressCode': '',
+    'visitInfo.entryFee': '',
+    'visitInfo.photographyAllowed': true,
+    'facilities.parking': false,
+    'facilities.prasad': false,
+    'facilities.accommodation': false,
+    'facilities.wheelchairAccessible': false,
+    'facilities.restrooms': false,
+    'facilities.drinkingWater': false,
+    'socialMedia.facebook': '',
+    'socialMedia.instagram': '',
+    'socialMedia.youtube': '',
+    'socialMedia.twitter': '',
+    // NEW FIELDS
+    'significance': '',
+    'templeType': 'Other',
+    'architecture': '',
+    'builtYear': '',
+    'languages': '',
+    'videos': '',
+    'location.pincode': '',
+    'timing.specialTimings': '',
+    'visitInfo.mobileAllowed': true,
+    'visitInfo.shoeStand': true,
+    'visitInfo.annualVisitors': '',
+    'facilities.cloakroom': false,
+    'facilities.medicalAid': false,
+    'facilities.foodStalls': false,
+  });
+  const [photoUrl, setPhotoUrl] = useState('');
+
+  useEffect(() => {
+    fetchMandirs();
+  }, []);
+
+  const fetchMandirs = async () => {
+    try {
+      const [approvedRes, pendingRes] = await Promise.all([
+        api.get('/api/admin/mandirs'),
+        api.get('/api/admin/mandirs/pending'),
+      ]);
+      const approvedData = await approvedRes.json();
+      const pendingData = await pendingRes.json();
+      if (approvedData.success) setMandirs(approvedData.mandirs);
+      if (pendingData.success) setPendingMandirs(pendingData.mandirs);
+    } catch (error) {
+      console.error('Error fetching mandirs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      // Convert aarti times string to array
+      const aartiTimes = formData['timing.aarti']
+        .split(',')
+        .map(time => time.trim())
+        .filter(time => time.length > 0);
+
+      // Convert deity others string to array
+      const deityOthers = formData['deity.others']
+        .split(',')
+        .map(deity => deity.trim())
+        .filter(deity => deity.length > 0);
+
+      // Convert flat form data to nested object
+      const mandirData: any = {
+        name: formData.name,
+        description: formData.description,
+        history: formData.history,
+        significance: formData['significance'],
+        templeType: formData['templeType'],
+        architecture: formData['architecture'],
+        builtYear: formData['builtYear'],
+        languages: formData['languages'] ? formData['languages'].split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+        videos: formData['videos'] ? formData['videos'].split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+        location: {
+          address: formData['location.address'],
+          city: formData['location.city'],
+          state: formData['location.state'],
+          pincode: formData['location.pincode'],
+          coordinates: formData['location.coordinates.lat'] && formData['location.coordinates.lng'] ? {
+            lat: parseFloat(formData['location.coordinates.lat']),
+            lng: parseFloat(formData['location.coordinates.lng'])
+          } : undefined
+        },
+        timing: {
+          opening: formData['timing.opening'],
+          closing: formData['timing.closing'],
+          aarti: aartiTimes,
+          specialTimings: formData['timing.specialTimings'],
+        },
+        contact: {
+          phone: formData['contact.phone'],
+          email: formData['contact.email'],
+          website: formData['contact.website']
+        },
+        photos: formData.photos,
+        deity: {
+          main: formData['deity.main'],
+          others: deityOthers
+        },
+        visitInfo: {
+          bestTimeToVisit: formData['visitInfo.bestTimeToVisit'],
+          dressCode: formData['visitInfo.dressCode'],
+          entryFee: formData['visitInfo.entryFee'],
+          photographyAllowed: formData['visitInfo.photographyAllowed'],
+          mobileAllowed: formData['visitInfo.mobileAllowed'],
+          shoeStand: formData['visitInfo.shoeStand'],
+          annualVisitors: formData['visitInfo.annualVisitors'],
+        },
+        facilities: {
+          parking: formData['facilities.parking'],
+          prasad: formData['facilities.prasad'],
+          accommodation: formData['facilities.accommodation'],
+          wheelchairAccessible: formData['facilities.wheelchairAccessible'],
+          restrooms: formData['facilities.restrooms'],
+          drinkingWater: formData['facilities.drinkingWater'],
+          cloakroom: formData['facilities.cloakroom'],
+          medicalAid: formData['facilities.medicalAid'],
+          foodStalls: formData['facilities.foodStalls'],
+        },
+        socialMedia: {
+          facebook: formData['socialMedia.facebook'],
+          instagram: formData['socialMedia.instagram'],
+          youtube: formData['socialMedia.youtube'],
+          twitter: formData['socialMedia.twitter']
+        },
+      };
+
+      const url = editingId ? `/api/admin/mandirs/${editingId}` : '/api/admin/mandirs';
+      const method = editingId ? 'PUT' : 'POST';
+      
+      const response = await (editingId 
+        ? api.put(url, mandirData)
+        : api.post(url, mandirData));
+      const data = await response.json();
+
+      if (data.success) {
+        alert(editingId ? '✅ Mandir updated successfully!' : '✅ Mandir created successfully!');
+        resetForm();
+        fetchMandirs();
+      } else {
+        alert(data.message || `Failed to ${editingId ? 'update' : 'create'} mandir`);
+      }
+    } catch (error) {
+      alert(`Error ${editingId ? 'updating' : 'creating'} mandir`);
+    }
+  };
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData({
+      name: '',
+      description: '',
+      history: '',
+      'location.address': '',
+      'location.city': '',
+      'location.state': '',
+      'location.coordinates.lat': '',
+      'location.coordinates.lng': '',
+      'timing.opening': '',
+      'timing.closing': '',
+      'timing.aarti': '',
+      'contact.phone': '',
+      'contact.email': '',
+      'contact.website': '',
+      photos: [],
+      'deity.main': '',
+      'deity.others': '',
+      'visitInfo.bestTimeToVisit': '',
+      'visitInfo.dressCode': '',
+      'visitInfo.entryFee': '',
+      'visitInfo.photographyAllowed': true,
+      'facilities.parking': false,
+      'facilities.prasad': false,
+      'facilities.accommodation': false,
+      'facilities.wheelchairAccessible': false,
+      'facilities.restrooms': false,
+      'facilities.drinkingWater': false,
+      'socialMedia.facebook': '',
+      'socialMedia.instagram': '',
+      'socialMedia.youtube': '',
+      'socialMedia.twitter': '',
+      'significance': '',
+      'templeType': 'Other',
+      'architecture': '',
+      'builtYear': '',
+      'languages': '',
+      'videos': '',
+      'location.pincode': '',
+      'timing.specialTimings': '',
+      'visitInfo.mobileAllowed': true,
+      'visitInfo.shoeStand': true,
+      'visitInfo.annualVisitors': '',
+      'facilities.cloakroom': false,
+      'facilities.medicalAid': false,
+      'facilities.foodStalls': false,
+    });
+    setPhotoUrl('');
+  };
+
+  const handleEdit = (mandir: Mandir) => {
+    setEditingId(mandir._id);
+    setFormData({
+      name: mandir.name,
+      description: mandir.description || '',
+      history: mandir.history || '',
+      'location.address': mandir.location.address || '',
+      'location.city': mandir.location.city,
+      'location.state': mandir.location.state,
+      'location.coordinates.lat': mandir.location.coordinates?.lat?.toString() || '',
+      'location.coordinates.lng': mandir.location.coordinates?.lng?.toString() || '',
+      'timing.opening': mandir.timing?.opening || '',
+      'timing.closing': mandir.timing?.closing || '',
+      'timing.aarti': mandir.timing?.aarti?.join(', ') || '',
+      'contact.phone': mandir.contact?.phone || '',
+      'contact.email': mandir.contact?.email || '',
+      'contact.website': mandir.contact?.website || '',
+      photos: mandir.photos || [],
+      // NEW FIELDS
+      'deity.main': mandir.deity?.main || '',
+      'deity.others': mandir.deity?.others?.join(', ') || '',
+      'visitInfo.bestTimeToVisit': mandir.visitInfo?.bestTimeToVisit || '',
+      'visitInfo.dressCode': mandir.visitInfo?.dressCode || '',
+      'visitInfo.entryFee': mandir.visitInfo?.entryFee || '',
+      'visitInfo.photographyAllowed': mandir.visitInfo?.photographyAllowed ?? true,
+      'facilities.parking': mandir.facilities?.parking || false,
+      'facilities.prasad': mandir.facilities?.prasad || false,
+      'facilities.accommodation': mandir.facilities?.accommodation || false,
+      'facilities.wheelchairAccessible': mandir.facilities?.wheelchairAccessible || false,
+      'facilities.restrooms': mandir.facilities?.restrooms || false,
+      'facilities.drinkingWater': mandir.facilities?.drinkingWater || false,
+      'socialMedia.facebook': mandir.socialMedia?.facebook || '',
+      'socialMedia.instagram': mandir.socialMedia?.instagram || '',
+      'socialMedia.youtube': mandir.socialMedia?.youtube || '',
+      'socialMedia.twitter': mandir.socialMedia?.twitter || '',
+      'significance': (mandir as any).significance || '',
+      'templeType': (mandir as any).templeType || 'Other',
+      'architecture': (mandir as any).architecture || '',
+      'builtYear': (mandir as any).builtYear || '',
+      'languages': (mandir as any).languages?.join(', ') || '',
+      'videos': (mandir as any).videos?.join(', ') || '',
+      'location.pincode': mandir.location?.pincode || '',
+      'timing.specialTimings': mandir.timing?.specialTimings || '',
+      'visitInfo.mobileAllowed': mandir.visitInfo?.mobileAllowed ?? true,
+      'visitInfo.shoeStand': mandir.visitInfo?.shoeStand ?? true,
+      'visitInfo.annualVisitors': mandir.visitInfo?.annualVisitors || '',
+      'facilities.cloakroom': mandir.facilities?.cloakroom || false,
+      'facilities.medicalAid': mandir.facilities?.medicalAid || false,
+      'facilities.foodStalls': mandir.facilities?.foodStalls || false,
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const uploadToCloudinary = async (file: File) => {
+    try {
+      setUploading(true);
+      
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      const headers: any = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Don't set Content-Type header - let browser set it with boundary
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/upload/image?folder=mandirs`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.url) {
+        return data.url;
+      } else {
+        throw new Error(data.message || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('❌ Failed to upload image. Please try again.');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size should be less than 5MB');
+      return;
+    }
+
+    const url = await uploadToCloudinary(file);
+    if (url) {
+      setFormData({
+        ...formData,
+        photos: [...formData.photos, url]
+      });
+      alert('✅ Image uploaded successfully!');
+    }
+  };
+
+  const addPhoto = () => {
+    if (photoUrl.trim()) {
+      setFormData({
+        ...formData,
+        photos: [...formData.photos, photoUrl.trim()]
+      });
+      setPhotoUrl('');
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setFormData({
+      ...formData,
+      photos: formData.photos.filter((_, i) => i !== index)
+    });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this mandir?')) return;
+
+    try {
+      const response = await api.delete(`/api/admin/mandirs/${id}`);
+      const data = await response.json();
+
+      if (data.success) {
+        alert('✅ Mandir deleted successfully!');
+        fetchMandirs();
+      }
+    } catch (error) {
+      alert('Error deleting mandir');
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    try {
+      const res = await api.put(`/api/admin/mandirs/${id}/approve`, {});
+      const data = await res.json();
+      if (data.success) { alert('✅ Mandir approved!'); fetchMandirs(); }
+    } catch { alert('Error approving mandir'); }
+  };
+
+  const handleReject = async (id: string) => {
+    const reason = prompt('Rejection reason (optional):') || '';
+    try {
+      const res = await api.put(`/api/admin/mandirs/${id}/reject`, { reason });
+      const data = await res.json();
+      if (data.success) { alert('Mandir rejected.'); fetchMandirs(); }
+    } catch { alert('Error rejecting mandir'); }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="mb-8 bg-gradient-to-r from-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+              <Church className="w-8 h-8 text-orange-600" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Mandir Management</h1>
+              <p className="text-orange-100">Manage all mandirs on the platform</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <button onClick={() => setActiveTab('pending')}
+              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${activeTab === 'pending' ? 'bg-white text-orange-600' : 'bg-white/20 text-white'}`}>
+              ⏳ Pending ({pendingMandirs.length})
+            </button>
+            <button onClick={() => setActiveTab('approved')}
+              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${activeTab === 'approved' ? 'bg-white text-orange-600' : 'bg-white/20 text-white'}`}>
+              ✅ Approved ({mandirs.length})
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowForm(!showForm);
+            }}
+            className="px-6 py-3 bg-white text-orange-600 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition-all"
+          >
+            {showForm ? <><X className="w-4 h-4 inline mr-1" />Cancel</> : <><Plus className="w-4 h-4 inline mr-1" />Add Mandir</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Add/Edit Mandir Form */}
+      {showForm && (
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border-2 border-orange-200">
+          <h2 className="text-2xl font-bold text-orange-700 mb-6 flex items-center gap-2">
+            {editingId ? <><Pencil className="w-6 h-6" /> Edit Mandir</> : <><Plus className="w-6 h-6" /> Add New Mandir</>}
+          </h2>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Information */}
+            <div className="bg-orange-50 rounded-xl p-6 border-2 border-orange-200">
+              <h3 className="text-xl font-bold text-orange-700 mb-4 flex items-center gap-2"><FileText className="w-5 h-5" /> Basic Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">Mandir Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="e.g., Ram Mandir Ayodhya"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">Description</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    rows={3}
+                    placeholder="Brief description of the mandir..."
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">History</label>
+                  <textarea
+                    value={formData.history}
+                    onChange={(e) => setFormData({...formData, history: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    rows={4}
+                    placeholder="Historical information about the mandir..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Location Information */}
+            <div className="bg-blue-50 rounded-xl p-6 border-2 border-blue-200">
+              <h3 className="text-xl font-bold text-blue-700 mb-4 flex items-center gap-2"><MapPin className="w-5 h-5" /> Location Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">Full Address</label>
+                  <input
+                    type="text"
+                    value={formData['location.address']}
+                    onChange={(e) => setFormData({...formData, 'location.address': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Complete address with street, area, etc."
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">City *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData['location.city']}
+                    onChange={(e) => setFormData({...formData, 'location.city': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., Ayodhya"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">State *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData['location.state']}
+                    onChange={(e) => setFormData({...formData, 'location.state': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., Uttar Pradesh"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Latitude (for Google Maps)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={formData['location.coordinates.lat']}
+                    onChange={(e) => setFormData({...formData, 'location.coordinates.lat': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., 26.7922"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Longitude (for Google Maps)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={formData['location.coordinates.lng']}
+                    onChange={(e) => setFormData({...formData, 'location.coordinates.lng': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., 82.1998"
+                  />
+                </div>
+                <div className="md:col-span-2 bg-blue-100 p-4 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    💡 <strong>Tip:</strong> To get coordinates, search your mandir on Google Maps, right-click on the location, and copy the coordinates.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Timing Information */}
+            <div className="bg-green-50 rounded-xl p-6 border-2 border-green-200">
+              <h3 className="text-xl font-bold text-green-700 mb-4 flex items-center gap-2"><Calendar className="w-5 h-5" /> Timing Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Opening Time</label>
+                  <input
+                    type="time"
+                    value={formData['timing.opening']}
+                    onChange={(e) => setFormData({...formData, 'timing.opening': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Closing Time</label>
+                  <input
+                    type="time"
+                    value={formData['timing.closing']}
+                    onChange={(e) => setFormData({...formData, 'timing.closing': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">Aarti Times (comma separated)</label>
+                  <input
+                    type="text"
+                    value={formData['timing.aarti']}
+                    onChange={(e) => setFormData({...formData, 'timing.aarti': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="e.g., 6:00 AM, 12:00 PM, 7:00 PM"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <div className="bg-purple-50 rounded-xl p-6 border-2 border-purple-200">
+              <h3 className="text-xl font-bold text-purple-700 mb-4 flex items-center gap-2"><Phone className="w-5 h-5" /> Contact Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={formData['contact.phone']}
+                    onChange={(e) => setFormData({...formData, 'contact.phone': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="e.g., +91 1234567890"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={formData['contact.email']}
+                    onChange={(e) => setFormData({...formData, 'contact.email': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="e.g., info@mandir.com"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">Website</label>
+                  <input
+                    type="url"
+                    value={formData['contact.website']}
+                    onChange={(e) => setFormData({...formData, 'contact.website': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="e.g., https://www.mandir.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Photo URLs */}
+            <div className="bg-pink-50 rounded-xl p-6 border-2 border-pink-200">
+              <ImageUploader
+                label="📸 Mandir Photos (multiple allowed)"
+                value={formData.photos}
+                onChange={v => setFormData({ ...formData, photos: v as string[] })}
+                multiple
+                folder="mandirs"
+              />
+            </div>
+
+            {/* Deity Information */}
+            <div className="bg-yellow-50 rounded-xl p-6 border-2 border-yellow-200">
+              <h3 className="text-xl font-bold text-yellow-700 mb-4 flex items-center gap-2"><Sparkles className="w-5 h-5" /> Deity Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">Main Deity</label>
+                  <input
+                    type="text"
+                    value={formData['deity.main']}
+                    onChange={(e) => setFormData({...formData, 'deity.main': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    placeholder="e.g., Shri Ram, Shri Krishna, Shiv Ji"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-semibold mb-2">Other Deities (comma separated)</label>
+                  <input
+                    type="text"
+                    value={formData['deity.others']}
+                    onChange={(e) => setFormData({...formData, 'deity.others': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                    placeholder="e.g., Sita Mata, Lakshman Ji, Hanuman Ji"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Visit Information */}
+            <div className="bg-indigo-50 rounded-xl p-6 border-2 border-indigo-200">
+              <h3 className="text-xl font-bold text-indigo-700 mb-4">ℹ️ Visit Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Best Time to Visit</label>
+                  <input
+                    type="text"
+                    value={formData['visitInfo.bestTimeToVisit']}
+                    onChange={(e) => setFormData({...formData, 'visitInfo.bestTimeToVisit': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., Morning 6-8 AM, Evening 5-7 PM"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Entry Fee</label>
+                  <input
+                    type="text"
+                    value={formData['visitInfo.entryFee']}
+                    onChange={(e) => setFormData({...formData, 'visitInfo.entryFee': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., Free, ₹50, ₹100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Dress Code</label>
+                  <input
+                    type="text"
+                    value={formData['visitInfo.dressCode']}
+                    onChange={(e) => setFormData({...formData, 'visitInfo.dressCode': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="e.g., Traditional attire preferred, Modest clothing"
+                  />
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-indigo-100 rounded-xl">
+                  <input
+                    type="checkbox"
+                    id="photographyAllowed"
+                    checked={formData['visitInfo.photographyAllowed']}
+                    onChange={(e) => setFormData({...formData, 'visitInfo.photographyAllowed': e.target.checked})}
+                    className="w-5 h-5 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="photographyAllowed" className="text-gray-700 font-semibold cursor-pointer">
+                    📸 Photography Allowed
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Facilities */}
+            <div className="bg-teal-50 rounded-xl p-6 border-2 border-teal-200">
+              <h3 className="text-xl font-bold text-teal-700 mb-4 flex items-center gap-2"><Church className="w-5 h-5" /> Facilities Available</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="flex items-center gap-3 p-4 bg-white rounded-xl border-2 border-teal-100">
+                  <input
+                    type="checkbox"
+                    id="parking"
+                    checked={formData['facilities.parking']}
+                    onChange={(e) => setFormData({...formData, 'facilities.parking': e.target.checked})}
+                    className="w-5 h-5 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
+                  />
+                  <label htmlFor="parking" className="text-gray-700 font-semibold cursor-pointer">
+                    🅿️ Parking
+                  </label>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-white rounded-xl border-2 border-teal-100">
+                  <input
+                    type="checkbox"
+                    id="prasad"
+                    checked={formData['facilities.prasad']}
+                    onChange={(e) => setFormData({...formData, 'facilities.prasad': e.target.checked})}
+                    className="w-5 h-5 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
+                  />
+                  <label htmlFor="prasad" className="text-gray-700 font-semibold cursor-pointer">
+                    🍬 Prasad
+                  </label>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-white rounded-xl border-2 border-teal-100">
+                  <input
+                    type="checkbox"
+                    id="accommodation"
+                    checked={formData['facilities.accommodation']}
+                    onChange={(e) => setFormData({...formData, 'facilities.accommodation': e.target.checked})}
+                    className="w-5 h-5 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
+                  />
+                  <label htmlFor="accommodation" className="text-gray-700 font-semibold cursor-pointer">
+                    🏨 Accommodation
+                  </label>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-white rounded-xl border-2 border-teal-100">
+                  <input
+                    type="checkbox"
+                    id="wheelchair"
+                    checked={formData['facilities.wheelchairAccessible']}
+                    onChange={(e) => setFormData({...formData, 'facilities.wheelchairAccessible': e.target.checked})}
+                    className="w-5 h-5 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
+                  />
+                  <label htmlFor="wheelchair" className="text-gray-700 font-semibold cursor-pointer">
+                    ♿ Wheelchair Access
+                  </label>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-white rounded-xl border-2 border-teal-100">
+                  <input
+                    type="checkbox"
+                    id="restrooms"
+                    checked={formData['facilities.restrooms']}
+                    onChange={(e) => setFormData({...formData, 'facilities.restrooms': e.target.checked})}
+                    className="w-5 h-5 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
+                  />
+                  <label htmlFor="restrooms" className="text-gray-700 font-semibold cursor-pointer">
+                    🚻 Restrooms
+                  </label>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-white rounded-xl border-2 border-teal-100">
+                  <input
+                    type="checkbox"
+                    id="drinkingWater"
+                    checked={formData['facilities.drinkingWater']}
+                    onChange={(e) => setFormData({...formData, 'facilities.drinkingWater': e.target.checked})}
+                    className="w-5 h-5 text-teal-600 rounded focus:ring-2 focus:ring-teal-500"
+                  />
+                  <label htmlFor="drinkingWater" className="text-gray-700 font-semibold cursor-pointer">
+                    💧 Drinking Water
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Social Media */}
+            <div className="bg-cyan-50 rounded-xl p-6 border-2 border-cyan-200">
+              <h3 className="text-xl font-bold text-cyan-700 mb-4 flex items-center gap-2"><Smartphone className="w-5 h-5" /> Social Media Links</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Facebook</label>
+                  <input
+                    type="url"
+                    value={formData['socialMedia.facebook']}
+                    onChange={(e) => setFormData({...formData, 'socialMedia.facebook': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    placeholder="https://facebook.com/mandir"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Instagram</label>
+                  <input
+                    type="url"
+                    value={formData['socialMedia.instagram']}
+                    onChange={(e) => setFormData({...formData, 'socialMedia.instagram': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    placeholder="https://instagram.com/mandir"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">YouTube</label>
+                  <input
+                    type="url"
+                    value={formData['socialMedia.youtube']}
+                    onChange={(e) => setFormData({...formData, 'socialMedia.youtube': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    placeholder="https://youtube.com/@mandir"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">Twitter</label>
+                  <input
+                    type="url"
+                    value={formData['socialMedia.twitter']}
+                    onChange={(e) => setFormData({...formData, 'socialMedia.twitter': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    placeholder="https://twitter.com/mandir"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Temple Classification */}
+            <div className="border-2 border-indigo-200 rounded-xl p-6">
+              <h3 className="text-lg font-bold text-indigo-700 mb-4">🏛️ Temple Classification</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Temple Type</label>
+                  <select value={formData['templeType']} onChange={e => setFormData({...formData, 'templeType': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    {['Other','Jyotirlinga','Shakti Peeth','Char Dham','Divya Desam','Ashtavinayak'].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Architecture Style</label>
+                  <input value={formData['architecture']} onChange={e => setFormData({...formData, 'architecture': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g. Dravidian, Nagara, Vesara" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Built Year / Century</label>
+                  <input value={formData['builtYear']} onChange={e => setFormData({...formData, 'builtYear': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g. 12th Century or 1850" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Annual Visitors</label>
+                  <input value={formData['visitInfo.annualVisitors']} onChange={e => setFormData({...formData, 'visitInfo.annualVisitors': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g. 10 Lakh+" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Languages (comma separated)</label>
+                  <input value={formData['languages']} onChange={e => setFormData({...formData, 'languages': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g. Hindi, Sanskrit, Tamil" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Significance / Why Famous</label>
+                  <textarea value={formData['significance']} onChange={e => setFormData({...formData, 'significance': e.target.value})}
+                    rows={3} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 resize-none"
+                    placeholder="Religious importance, why this temple is significant..." />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Video URLs (YouTube embed, comma separated)</label>
+                  <input value={formData['videos']} onChange={e => setFormData({...formData, 'videos': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                    placeholder="https://www.youtube.com/embed/..." />
+                </div>
+              </div>
+            </div>
+
+            {/* Extra Visit Info */}
+            <div className="border-2 border-green-200 rounded-xl p-6">
+              <h3 className="text-lg font-bold text-green-700 mb-4">📋 Additional Visit Info</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">PIN Code</label>
+                  <input value={formData['location.pincode']} onChange={e => setFormData({...formData, 'location.pincode': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
+                    placeholder="e.g. 623526" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Special Timings Note</label>
+                  <input value={formData['timing.specialTimings']} onChange={e => setFormData({...formData, 'timing.specialTimings': e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500"
+                    placeholder="e.g. Closed on Mondays 12-4 PM" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="mobileAllowed" checked={formData['visitInfo.mobileAllowed'] as boolean}
+                    onChange={e => setFormData({...formData, 'visitInfo.mobileAllowed': e.target.checked})}
+                    className="w-5 h-5 text-green-600 rounded" />
+                  <label htmlFor="mobileAllowed" className="text-sm font-semibold text-gray-700">Mobile Phones Allowed</label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="shoeStand" checked={formData['visitInfo.shoeStand'] as boolean}
+                    onChange={e => setFormData({...formData, 'visitInfo.shoeStand': e.target.checked})}
+                    className="w-5 h-5 text-green-600 rounded" />
+                  <label htmlFor="shoeStand" className="text-sm font-semibold text-gray-700">Shoe Stand Available</label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="cloakroom" checked={formData['facilities.cloakroom'] as boolean}
+                    onChange={e => setFormData({...formData, 'facilities.cloakroom': e.target.checked})}
+                    className="w-5 h-5 text-green-600 rounded" />
+                  <label htmlFor="cloakroom" className="text-sm font-semibold text-gray-700">Cloakroom Available</label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="medicalAid" checked={formData['facilities.medicalAid'] as boolean}
+                    onChange={e => setFormData({...formData, 'facilities.medicalAid': e.target.checked})}
+                    className="w-5 h-5 text-green-600 rounded" />
+                  <label htmlFor="medicalAid" className="text-sm font-semibold text-gray-700">Medical Aid Available</label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="foodStalls" checked={formData['facilities.foodStalls'] as boolean}
+                    onChange={e => setFormData({...formData, 'facilities.foodStalls': e.target.checked})}
+                    className="w-5 h-5 text-green-600 rounded" />
+                  <label htmlFor="foodStalls" className="text-sm font-semibold text-gray-700">Food Stalls Available</label>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={uploading}
+              className="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {uploading ? 'Uploading...' : (editingId ? 'Update Mandir' : 'Create Mandir')}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="bg-gradient-to-r from-orange-100 to-red-100 rounded-2xl p-6 mb-8 border-2 border-orange-300">
+        <p className="text-orange-800 text-lg">
+          <span className="font-bold text-2xl">{mandirs.length}</span> mandir{mandirs.length !== 1 ? 's' : ''} in database
+        </p>
+      </div>
+
+      {/* Mandirs List */}
+      {/* Pending Mandirs Tab */}
+      {activeTab === 'pending' && (
+        pendingMandirs.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-xl p-12 text-center border-2 border-orange-200">
+            <Church className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">कोई Pending Mandir नहीं</h3>
+            <p className="text-gray-500">सभी submissions review हो चुकी हैं।</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {pendingMandirs.map((mandir: any) => (
+              <div key={mandir._id} className="bg-white rounded-2xl shadow-lg p-6 border-2 border-yellow-200">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-black bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">⏳ PENDING</span>
+                      {mandir.submittedBy && (
+                        <span className="text-xs text-gray-500">by {mandir.submittedBy.name} ({mandir.submittedBy.email})</span>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-bold text-orange-700">{mandir.name}</h3>
+                    <p className="text-sm text-gray-500">{mandir.location?.city}, {mandir.location?.state}</p>
+                    {mandir.description && <p className="text-sm text-gray-600 mt-1 line-clamp-2">{mandir.description}</p>}
+                    {mandir.deity?.main && <p className="text-xs text-orange-500 mt-1">🛕 {mandir.deity.main}</p>}
+                    <p className="text-xs text-gray-400 mt-1">{new Date(mandir.createdAt).toLocaleDateString('hi-IN')}</p>
+                  </div>
+                  <div className="flex flex-col gap-2 flex-shrink-0">
+                    <button onClick={() => handleApprove(mandir._id)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all">
+                      ✅ Approve
+                    </button>
+                    <button onClick={() => handleReject(mandir._id)}
+                      className="px-4 py-2 bg-red-100 text-red-600 rounded-xl font-bold text-sm hover:bg-red-200 transition-all">
+                      ❌ Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* Approved Mandirs Tab */}
+      {activeTab === 'approved' && (mandirs.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-xl p-12 text-center border-2 border-orange-200">
+          <Church className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-3xl font-bold text-gray-800 mb-3">No Mandirs Yet</h3>
+          <p className="text-gray-600 text-lg">Click "Add Mandir" to create your first mandir.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6">
+          {mandirs.map((mandir) => (
+            <div key={mandir._id} className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all border-2 border-orange-100">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-2xl font-bold text-orange-700">{mandir.name}</h3>
+                    <div className="flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full">
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                      <span className="font-bold text-yellow-700">
+                        {mandir.averageRating > 0 ? mandir.averageRating.toFixed(1) : 'New'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 mb-3">{mandir.description || 'No description'}</p>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {mandir.location.city}, {mandir.location.state}</span>
+                    <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> {mandir.reviews.length} reviews</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(mandir.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="flex gap-3 ml-4">
+                  <Link
+                    href={`/mandirs/${mandir._id}`}
+                    className="inline-flex items-center gap-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all text-sm font-semibold"
+                  >
+                    <Eye className="w-4 h-4" /> View
+                  </Link>
+                  <button
+                    onClick={() => handleEdit(mandir)}
+                    className="inline-flex items-center gap-1 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all text-sm font-semibold"
+                  >
+                    <Pencil className="w-4 h-4" /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(mandir._id)}
+                    className="inline-flex items-center gap-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all text-sm font-semibold"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
